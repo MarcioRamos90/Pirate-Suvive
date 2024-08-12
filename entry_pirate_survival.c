@@ -1,3 +1,21 @@
+bool almost_equals(float a, float b, float epsilon) {
+	return fabs(a -b) <= epsilon;
+}
+
+bool animate_f32_to_target(float* value, float target, float delat_t, float rate) {
+	*value += (target - *value) * (1.0 - pow(2.0f, -rate*delat_t));
+	if (almost_equals(*value, target, 0.001f)) {
+		*value = target;
+		return true;
+	}
+	return false;
+}
+
+void animate_v2_to_target(Vector2* value, Vector2 target, float delat_t, float rate) {
+	animate_f32_to_target(&(value->x), target.x, delat_t, rate);
+	animate_f32_to_target(&(value->y), target.y, delat_t, rate);
+}
+
 
 typedef struct Sprite {
 	Gfx_Image* image;
@@ -130,18 +148,30 @@ int entry(int argc, char **argv)
 	float64 seconds_counter = 0.0;
 	s32 frame_count = 0;
 
+	float zoom = 15.3;
+	Vector2 camera_pos = v2(0, 0);
+
 	float64 last_time = os_get_current_time_in_seconds();
 	while (!window.should_close)
 	{
 		reset_temporary_storage();
 
 		draw_frame.projection = m4_make_orthographic_projection(window.width * -0.5, window.width * 0.5, window.height * -0.5, window.height * 0.5, -1, 10);
-		float zoom = 15.3;
-		draw_frame.view = m4_make_scale(v3(1.0/zoom, 1.0/zoom, 1.0));
+
 
 		float64 now = os_get_current_time_in_seconds();
 		float64 delta_t = now - last_time;
 		last_time = now;
+
+		// :camera
+		{
+			Vector2 target_pos = player_en->pos;
+			animate_v2_to_target(&camera_pos, target_pos, delta_t, 5.0f);
+			
+			draw_frame.view = m4_make_scale(v3(1.0, 1.0, 1.0));
+			draw_frame.view = m4_mul(draw_frame.view, m4_make_translation(v3(camera_pos.x, camera_pos.y, 1.0)));
+			draw_frame.view = m4_mul(draw_frame.view, m4_make_scale(v3(1.0/zoom, 1.0/zoom, 1.0)));
+		}
 
 		os_update();
 
@@ -189,7 +219,7 @@ int entry(int argc, char **argv)
 		}
 		input_axis = v2_normalize(input_axis);
 
-		player_en->pos = v2_add(player_en->pos, v2_mulf(input_axis, 30.0 * delta_t));
+		player_en->pos = v2_add(player_en->pos, v2_mulf(input_axis, 20.0 * delta_t));
 
 		gfx_update();
 
