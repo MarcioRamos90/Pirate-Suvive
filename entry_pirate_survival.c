@@ -159,7 +159,7 @@ Vector2 get_mouse_world_pos()
 
 int entry(int argc, char **argv)
 {
-	Gfx_Font *font = load_font_from_disk(STR("C:/windows/fonts/arial.ttf"), get_heap_allocator());
+	Gfx_Font *font = load_font_from_disk(STR("C:/windows/fonts/arial.ttf"), get_temporary_allocator());
 	assert(font, "Failed loading arial.ttf, %d", GetLastError());
 
 	window.title = STR("Minimal Game Example OF UMOM");
@@ -270,7 +270,7 @@ int entry(int argc, char **argv)
 							f32 xCenter = (x1 + x2) * 0.5;
 							f32 yCenter = (y1 + y2) * 0.5;
 
-							Vector2 newpos = v2(xCenter - 1.25, yCenter - (sprite->size.y / 4.5));
+							Vector2 newpos = v2(xCenter - 1.25, yCenter - (sprite->size.y / 4.4));
 							draw_circle(newpos, size, COLOR_WHITE);
 
 							Vector2 mousenewpos = v2_sub(v2(mouse_tile_x, mouse_tile_y), v2_divf(size, 2.0));
