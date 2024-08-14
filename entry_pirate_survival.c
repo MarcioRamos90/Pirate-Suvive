@@ -1,4 +1,6 @@
-const int tile_width = 8;
+#define COLOR_BLACK_TRANSPARENT ((Vector4){0.5, 0.5, 0.5, 0.5})
+
+const float entity_selection_radius = 16.0f;
 
 Gfx_Font *font;
 
@@ -22,11 +24,6 @@ void animate_v2_to_target(Vector2 *value, Vector2 target, float delat_t, float r
 {
 	animate_f32_to_target(&(value->x), target.x, delat_t, rate);
 	animate_f32_to_target(&(value->y), target.y, delat_t, rate);
-}
-
-float32 world_pos_to_tile_pos(float world_pos)
-{
-	return world_pos / (float)tile_width;
 }
 
 float32 dist_lenght(Vector2 a, Vector2 b)
@@ -72,17 +69,22 @@ typedef struct Entity
 	bool is_valid;
 	EntityArchetype arch;
 	Vector2 pos;
+	Vector4 color;
 
 	bool render_sprite;
 	SpriteID sprite_id;
 } Entity;
 #define MAX_ENTITY_COUNT 1024
-
 typedef struct World
 {
 	Entity entities[MAX_ENTITY_COUNT];
 } World;
 World *world = 0;
+typedef struct WorldFrame
+{
+	Entity *selected_entity;
+} WorldFrame;
+WorldFrame world_frame;
 
 Entity *entity_create()
 {
@@ -216,6 +218,7 @@ int entry(int argc, char **argv)
 	while (!window.should_close)
 	{
 		reset_temporary_storage();
+		world_frame = (WorldFrame){0};
 
 		draw_frame.projection = m4_make_orthographic_projection(window.pixel_width * -0.5, window.pixel_width * 0.5, window.pixel_height * -0.5, window.pixel_height * 0.5, -1, 10);
 		float64 now = os_get_current_time_in_seconds();
@@ -244,22 +247,15 @@ int entry(int argc, char **argv)
 			if (en->is_valid)
 			{
 				Sprite *sprite = get_sprite(en->sprite_id);
-				Vector4 color = COLOR_BLACK;
+				en->color = COLOR_BLACK_TRANSPARENT;
 				{
 					Vector2 en_player_pos = player_en->pos;
 					Vector2 en_obj_pos = en->pos;
 					f32 lenght_dist_pos_obj_and_player = dist_lenght(en_player_pos, en_obj_pos);
 
-					if (lenght_dist_pos_obj_and_player < 20)
+					if (lenght_dist_pos_obj_and_player < entity_selection_radius)
 					{
-						color = COLOR_WHITE;
-						// {
-						// 	string text = STR("x=%f, y=%f\n");
-						// 	text = tprint(text, mouse_tile_x, mouse_tile_y);
-						// 	Vector2 size = v2(2, 2);
-						// 	Vector2 newpos = v2_sub(v2(mouse_tile_x, mouse_tile_y), v2_divf(size, 2.0));
-						// 	draw_circle(newpos, size, COLOR_RED);
-						// }
+						en->color = COLOR_WHITE;
 						{
 
 							Vector2 size = v2(2, 2);
@@ -271,26 +267,32 @@ int entry(int argc, char **argv)
 							f32 yCenter = (y1 + y2) * 0.5;
 
 							Vector2 newpos = v2(xCenter - 1.25, yCenter - (sprite->size.y / 4.4));
-							draw_circle(newpos, size, COLOR_WHITE);
-
 							Vector2 mousenewpos = v2_sub(v2(mouse_tile_x, mouse_tile_y), v2_divf(size, 2.0));
 
 							if (dist_lenght(mousenewpos, newpos) < 1)
 							{
-								color = COLOR_RED;
+								en->color = COLOR_RED;
 							}
 						}
 					}
 				}
+			}
+		}
+
+		for (int i = 0; i < MAX_ENTITY_COUNT; i++)
+		{
+			Entity *en = &world->entities[i];
+			if (en->is_valid)
+			{
+				Sprite *sprite = get_sprite(en->sprite_id);
 				switch (en->arch)
 				{
 				default:
 				{
-
 					Matrix4 xform = m4_scalar(2.0);
 					// xform = m4_translate(xform, v3(en->pos.x, en->pos.y, 0));
 					// xform = m4_translate(xform, v3(sprite->size.x * 0.2, sprite->size.y * 1, 0));
-					draw_image(sprite->image, en->pos, sprite->size, color);
+					draw_image(sprite->image, en->pos, sprite->size, en->color);
 					break;
 				}
 				}
