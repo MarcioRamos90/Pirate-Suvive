@@ -1,5 +1,8 @@
 #define COLOR_BLACK_TRANSPARENT ((Vector4){0.5, 0.5, 0.5, 1})
 
+const int rock_health = 3;
+const int tree_health = 3;
+
 const float entity_selection_radius = 100.0f;
 
 Gfx_Font *font;
@@ -40,9 +43,11 @@ typedef enum SpriteID
 	SPRITE_nil,
 	SPRITE_player,
 	SPRITE_tree0,
-	// SPRITE_tree1,
 	SPRITE_rock0,
 	SPRITE_rock1,
+	SPRITE_item_pine_wood,
+	SPRITE_item_rock0,
+	SPRITE_item_rock1,
 	SPRITE_MAX,
 } SpriteID;
 Sprite sprites[SPRITE_MAX];
@@ -62,9 +67,13 @@ Vector2 get_sprite_size(Sprite* sprite) {
 typedef enum EntityArchetype
 {
 	arch_nil = 0,
-	arch_rock = 1,
-	arch_tree = 2,
-	arch_player = 3,
+	arch_rock0 = 1,
+	arch_rock1 = 2,
+	arch_tree = 3,
+	arch_player = 4,
+	arch_item_rock0 = 5,
+	arch_item_rock1 = 6,
+	arch_item_pine_wood = 7,
 } EntityArchetype;
 typedef struct Entity
 {
@@ -72,9 +81,11 @@ typedef struct Entity
 	EntityArchetype arch;
 	Vector2 pos;
 	Vector4 color;
-
 	bool render_sprite;
 	SpriteID sprite_id;
+	int health;
+	bool destroyable_world_item;
+
 } Entity;
 #define MAX_ENTITY_COUNT 1024
 typedef struct World
@@ -120,22 +131,44 @@ void setup_tree(Entity *en)
 {
 	en->arch = arch_tree;
 	en->sprite_id = SPRITE_tree0;
-	// en->sprite_id = SPRITE_tree1;
+
+	en->health = tree_health;
+	en->destroyable_world_item = true;
 }
 
-void setup_rock(Entity *en)
+void setup_item_tree(Entity* en) {
+	en->arch = arch_item_pine_wood;
+	en->sprite_id = SPRITE_item_pine_wood;
+}
+
+void setup_rock0(Entity *en)
 {
-	en->arch = arch_rock;
+	en->arch = arch_rock0;
 	en->sprite_id = SPRITE_rock0;
-	// en->sprite_id = SPRITE_tree1;
+
+	en->health = rock_health;
+	en->destroyable_world_item = true;
 }
 
 void setup_rock1(Entity *en)
 {
-	en->arch = arch_rock;
+	en->arch = arch_rock1;
 	en->sprite_id = SPRITE_rock1;
-	// en->sprite_id = SPRITE_tree1;
+
+	en->health = rock_health;
+	en->destroyable_world_item = true;
 }
+
+void setup_item_rock0(Entity* en) {
+	en->arch = arch_item_rock0;
+	en->sprite_id = SPRITE_item_rock0;
+}
+
+void setup_item_rock1(Entity* en) {
+	en->arch = arch_item_rock1;
+	en->sprite_id = SPRITE_item_rock1;
+}
+
 
 Vector2 screen_to_world(Vector2 screen)
 {
@@ -176,10 +209,13 @@ int entry(int argc, char **argv)
 	world = alloc(get_heap_allocator(), sizeof(World));
 	memset(world, 0, sizeof(World));
 
-	sprites[SPRITE_player] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite/player1.png"), get_heap_allocator()) };
+	sprites[SPRITE_player] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite/player0.png"), get_heap_allocator()) };
 	sprites[SPRITE_tree0] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite/tree1.png"), get_heap_allocator()) };
 	sprites[SPRITE_rock0] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite/rock0.png"), get_heap_allocator()) };
 	sprites[SPRITE_rock1] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite/rock1.png"), get_heap_allocator()) };
+	sprites[SPRITE_item_pine_wood] = (Sprite){ .image=load_image_from_disk(STR("assets/aseprite/item-tree0.png"), get_heap_allocator()) };
+	sprites[SPRITE_item_rock0] = (Sprite){ .image=load_image_from_disk(STR("assets/aseprite/item-rock0.png"), get_heap_allocator()) };
+	sprites[SPRITE_item_rock1] = (Sprite){ .image=load_image_from_disk(STR("assets/aseprite/item-rock1.png"), get_heap_allocator()) };
 
 	// Player entity
 	Entity *player_en = entity_create();
@@ -191,7 +227,7 @@ int entry(int argc, char **argv)
 	for (int i = 1; i < 30; i++)
 	{
 		Entity *en = entity_create();
-		setup_rock(en);
+		setup_rock0(en);
 		en->pos = v2(get_random_float32_in_range(-the_world_size, the_world_size), get_random_float32_in_range(-the_world_size, the_world_size));
 	}
 
@@ -248,11 +284,11 @@ int entry(int argc, char **argv)
 		for (int i = 0; i < MAX_ENTITY_COUNT; i++)
 		{
 			Entity *en = &world->entities[i];
-			if (en->is_valid)
-			// calculating enable entities
+			if (en->is_valid && en->destroyable_world_item)
 			{
 				Sprite *sprite = get_sprite(en->sprite_id);
 				en->color = COLOR_BLACK_TRANSPARENT;
+				// calculating enable entities
 				{
 					Vector2 en_player_pos = player_en->pos;
 					Vector2 en_obj_pos = en->pos;
@@ -280,8 +316,55 @@ int entry(int argc, char **argv)
 							if (dist_lenght(mousenewpos, newpos) < 7)
 							{
 								en->color = COLOR_RED;
+								world_frame.selected_entity = en;
 							}
 						}
+					}
+				}
+			} else if (en->is_valid && !en->destroyable_world_item) {
+				en->color = COLOR_WHITE;
+			}
+		}
+
+		// clicable thing
+		{
+			Entity * selected_en = world_frame.selected_entity;
+
+			if (is_key_just_pressed(MOUSE_BUTTON_LEFT)) {
+				consume_key_just_pressed(MOUSE_BUTTON_LEFT);
+
+				if (selected_en) {
+
+					printf("selected %i\n", selected_en->health);
+					selected_en->health -= 1;
+					if (selected_en->health <= 0 ) {
+						switch (selected_en->arch)
+						{
+						case arch_tree:
+							{
+								Entity *en = entity_create();
+								setup_item_tree(en);
+								en->pos = selected_en->pos;
+							}
+							break;
+						case arch_rock0:
+							{
+								Entity *en = entity_create();
+								setup_item_rock0(en);
+								en->pos = selected_en->pos;
+							}
+							break;
+						case arch_rock1:
+							{
+								Entity *en = entity_create();
+								setup_item_rock1(en);
+								en->pos = selected_en->pos;
+							}
+							break;
+						default:
+							break;
+						}
+						entity_destroy(selected_en);
 					}
 				}
 			}
