@@ -1,6 +1,6 @@
-#define COLOR_BLACK_TRANSPARENT ((Vector4){0.5, 0.5, 0.5, 0.5})
+#define COLOR_BLACK_TRANSPARENT ((Vector4){0.5, 0.5, 0.5, 1})
 
-const float entity_selection_radius = 16.0f;
+const float entity_selection_radius = 100.0f;
 
 Gfx_Font *font;
 
@@ -34,7 +34,6 @@ float32 dist_lenght(Vector2 a, Vector2 b)
 typedef struct Sprite
 {
 	Gfx_Image *image;
-	Vector2 size;
 } Sprite;
 typedef enum SpriteID
 {
@@ -46,7 +45,6 @@ typedef enum SpriteID
 	SPRITE_rock1,
 	SPRITE_MAX,
 } SpriteID;
-// randy: maybe we make this an X macro?? https://chatgpt.com/share/260222eb-2738-4d1e-8b1d-4973a097814d
 Sprite sprites[SPRITE_MAX];
 Sprite *get_sprite(SpriteID id)
 {
@@ -55,6 +53,10 @@ Sprite *get_sprite(SpriteID id)
 		return &sprites[id];
 	}
 	return &sprites[0];
+}
+
+Vector2 get_sprite_size(Sprite* sprite) {
+	return (Vector2) { sprite->image->width, sprite->image->height };
 }
 
 typedef enum EntityArchetype
@@ -174,21 +176,23 @@ int entry(int argc, char **argv)
 	world = alloc(get_heap_allocator(), sizeof(World));
 	memset(world, 0, sizeof(World));
 
-	sprites[SPRITE_player] = (Sprite){.image = load_image_from_disk(STR("assets/player.png"), get_heap_allocator()), .size = v2(8.0, 10.0)};
-	sprites[SPRITE_tree0] = (Sprite){.image = load_image_from_disk(STR("assets/tree0.png"), get_heap_allocator()), .size = v2(8.0, 12.0)};
-	sprites[SPRITE_rock0] = (Sprite){.image = load_image_from_disk(STR("assets/rock0.png"), get_heap_allocator()), .size = v2(3.0, 6.0)};
-	sprites[SPRITE_rock1] = (Sprite){.image = load_image_from_disk(STR("assets/rock1.png"), get_heap_allocator()), .size = v2(3.0, 6.0)};
+	sprites[SPRITE_player] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite/player1.png"), get_heap_allocator()) };
+	sprites[SPRITE_tree0] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite/tree1.png"), get_heap_allocator()) };
+	sprites[SPRITE_rock0] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite/rock0.png"), get_heap_allocator()) };
+	sprites[SPRITE_rock1] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite/rock1.png"), get_heap_allocator()) };
 
 	// Player entity
 	Entity *player_en = entity_create();
 	setup_player(player_en);
+
+	int the_world_size = 500;
 
 	// rock 0 entities
 	for (int i = 1; i < 30; i++)
 	{
 		Entity *en = entity_create();
 		setup_rock(en);
-		en->pos = v2(get_random_float32_in_range(-50, 50), get_random_float32_in_range(-50, 50));
+		en->pos = v2(get_random_float32_in_range(-the_world_size, the_world_size), get_random_float32_in_range(-the_world_size, the_world_size));
 	}
 
 	// rock 1 entities
@@ -196,7 +200,7 @@ int entry(int argc, char **argv)
 	{
 		Entity *en = entity_create();
 		setup_rock1(en);
-		en->pos = v2(get_random_float32_in_range(-50, 50), get_random_float32_in_range(-50, 50));
+		en->pos = v2(get_random_float32_in_range(-the_world_size, the_world_size), get_random_float32_in_range(-the_world_size, the_world_size));
 	}
 
 	// Tree entities
@@ -204,14 +208,14 @@ int entry(int argc, char **argv)
 	{
 		Entity *en = entity_create();
 		setup_tree(en);
-		en->pos = v2(get_random_float32_in_range(-50, 50), get_random_float32_in_range(-50, 50));
+		en->pos = v2(get_random_float32_in_range(-the_world_size, the_world_size), get_random_float32_in_range(-the_world_size, the_world_size));
 	}
 
 	// vars to debug frames
 	float64 seconds_counter = 0.0;
 	s32 frame_count = 0;
 
-	float zoom = 15.3;
+	float zoom = 2;
 	Vector2 camera_pos = v2(0, 0);
 
 	float64 last_time = os_get_current_time_in_seconds();
@@ -245,6 +249,7 @@ int entry(int argc, char **argv)
 		{
 			Entity *en = &world->entities[i];
 			if (en->is_valid)
+			// calculating enable entities
 			{
 				Sprite *sprite = get_sprite(en->sprite_id);
 				en->color = COLOR_BLACK_TRANSPARENT;
@@ -256,20 +261,23 @@ int entry(int argc, char **argv)
 					if (lenght_dist_pos_obj_and_player < entity_selection_radius)
 					{
 						en->color = COLOR_WHITE;
+						
+						// calculating cliackable entity
 						{
 
-							Vector2 size = v2(2, 2);
+							Vector2 size = v2(15, 15);
 							f32 x1 = en->pos.x;
-							f32 x2 = en->pos.x + sprite->size.x;
+							f32 x2 = en->pos.x + sprite->image->width;
 							f32 y1 = en->pos.y;
-							f32 y2 = en->pos.y + sprite->size.y;
+							f32 y2 = en->pos.y + sprite->image->height;
 							f32 xCenter = (x1 + x2) * 0.5;
 							f32 yCenter = (y1 + y2) * 0.5;
 
-							Vector2 newpos = v2(xCenter - 1.25, yCenter - (sprite->size.y / 4.4));
+							Vector2 newpos = v2(xCenter - (sprite->image->width * 0.3), yCenter  - (sprite->image->height * 0.47));
 							Vector2 mousenewpos = v2_sub(v2(mouse_tile_x, mouse_tile_y), v2_divf(size, 2.0));
 
-							if (dist_lenght(mousenewpos, newpos) < 1)
+							// draw_circle(newpos, size, COLOR_WHITE);
+							if (dist_lenght(mousenewpos, newpos) < 7)
 							{
 								en->color = COLOR_RED;
 							}
@@ -289,10 +297,10 @@ int entry(int argc, char **argv)
 				{
 				default:
 				{
-					Matrix4 xform = m4_scalar(2.0);
-					// xform = m4_translate(xform, v3(en->pos.x, en->pos.y, 0));
-					// xform = m4_translate(xform, v3(sprite->size.x * 0.2, sprite->size.y * 1, 0));
-					draw_image(sprite->image, en->pos, sprite->size, en->color);
+					Matrix4 xform = m4_scalar(1.0);
+					xform = m4_translate(xform, v3(en->pos.x, en->pos.y, 0));
+					xform = m4_translate(xform, v3( get_sprite_size(sprite).x * -0.1, 0.0, 0));
+					draw_image_xform(sprite->image, xform, get_sprite_size(sprite), en->color);
 					break;
 				}
 				}
@@ -323,7 +331,8 @@ int entry(int argc, char **argv)
 		}
 		input_axis = v2_normalize(input_axis);
 
-		player_en->pos = v2_add(player_en->pos, v2_mulf(input_axis, 20.0 * delta_t));
+		f32 velocity = 100.0 * delta_t;
+		player_en->pos = v2_add(player_en->pos, v2_mulf(input_axis, velocity));
 
 		gfx_update();
 
