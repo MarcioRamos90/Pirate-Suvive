@@ -1,11 +1,10 @@
 #define COLOR_BLACK_TRANSPARENT ((Vector4){0.5, 0.5, 0.5, 1})
 
-const int rock_health = 3;
-const int tree_health = 3;
-
-const float entity_selection_radius = 100.0f;
-
 Gfx_Font *font;
+
+float sin_breathe(float time, float rate) {
+	return (sin(time * rate) + 1.0) / 2.0;
+}
 
 bool almost_equals(float a, float b, float epsilon)
 {
@@ -32,6 +31,28 @@ void animate_v2_to_target(Vector2 *value, Vector2 target, float delat_t, float r
 float32 dist_lenght(Vector2 a, Vector2 b)
 {
 	return v2_length(v2_sub(a, b));
+}
+
+
+const int tile_width = 8;
+
+const int rock_health = 3;
+const int tree_health = 3;
+
+const float entity_selection_radius = 100.0f;
+
+int world_pos_to_tile_pos(float world_pos) {
+	return roundf(world_pos / (float)tile_width);
+}
+
+float tile_pos_to_world_pos(int tile_pos) {
+	return ((float)tile_pos * (float)tile_width);
+}
+
+Vector2 round_v2_to_tile(Vector2 world_pos) {
+	world_pos.x = tile_pos_to_world_pos(world_pos_to_tile_pos(world_pos.x));
+	world_pos.y = tile_pos_to_world_pos(world_pos_to_tile_pos(world_pos.y));
+	return world_pos;
 }
 
 typedef struct Sprite
@@ -85,6 +106,8 @@ typedef struct Entity
 	SpriteID sprite_id;
 	int health;
 	bool destroyable_world_item;
+	bool is_item;
+
 
 } Entity;
 #define MAX_ENTITY_COUNT 1024
@@ -139,6 +162,7 @@ void setup_tree(Entity *en)
 void setup_item_tree(Entity* en) {
 	en->arch = arch_item_pine_wood;
 	en->sprite_id = SPRITE_item_pine_wood;
+	en->is_item = true;
 }
 
 void setup_rock0(Entity *en)
@@ -162,11 +186,13 @@ void setup_rock1(Entity *en)
 void setup_item_rock0(Entity* en) {
 	en->arch = arch_item_rock0;
 	en->sprite_id = SPRITE_item_rock0;
+	en->is_item = true;
 }
 
 void setup_item_rock1(Entity* en) {
 	en->arch = arch_item_rock1;
 	en->sprite_id = SPRITE_item_rock1;
+	en->is_item = true;
 }
 
 
@@ -381,6 +407,9 @@ int entry(int argc, char **argv)
 				default:
 				{
 					Matrix4 xform = m4_scalar(1.0);
+					if (en->is_item) {
+						xform = m4_translate(xform, v3(0, 2.0 * sin_breathe(os_get_current_time_in_seconds(), 5.0), 0));
+					}
 					xform = m4_translate(xform, v3(en->pos.x, en->pos.y, 0));
 					xform = m4_translate(xform, v3( get_sprite_size(sprite).x * -0.1, 0.0, 0));
 					draw_image_xform(sprite->image, xform, get_sprite_size(sprite), en->color);
