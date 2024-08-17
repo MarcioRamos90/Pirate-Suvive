@@ -28,18 +28,19 @@ void animate_v2_to_target(Vector2 *value, Vector2 target, float delat_t, float r
 	animate_f32_to_target(&(value->y), target.y, delat_t, rate);
 }
 
-float32 dist_lenght(Vector2 a, Vector2 b)
+float32 v2_dist(Vector2 a, Vector2 b)
 {
 	return v2_length(v2_sub(a, b));
 }
 
 
-const int tile_width = 8;
-
 const int rock_health = 3;
 const int tree_health = 3;
 
+const int tile_width = 8;
 const float entity_selection_radius = 100.0f;
+const float player_pickup_radius = 20.0f;
+
 
 int world_pos_to_tile_pos(float world_pos) {
 	return roundf(world_pos / (float)tile_width);
@@ -95,6 +96,7 @@ typedef enum EntityArchetype
 	arch_item_rock0 = 5,
 	arch_item_rock1 = 6,
 	arch_item_pine_wood = 7,
+	ARCH_MAX,
 } EntityArchetype;
 typedef struct Entity
 {
@@ -110,10 +112,18 @@ typedef struct Entity
 
 
 } Entity;
+// :entity
 #define MAX_ENTITY_COUNT 1024
+
+typedef struct ItemData {
+	int amount;
+} ItemData;
+
+// :world
 typedef struct World
 {
 	Entity entities[MAX_ENTITY_COUNT];
+	ItemData inventory_items[ARCH_MAX];
 } World;
 World *world = 0;
 typedef struct WorldFrame
@@ -243,6 +253,11 @@ int entry(int argc, char **argv)
 	sprites[SPRITE_item_rock0] = (Sprite){ .image=load_image_from_disk(STR("assets/aseprite/item-rock0.png"), get_heap_allocator()) };
 	sprites[SPRITE_item_rock1] = (Sprite){ .image=load_image_from_disk(STR("assets/aseprite/item-rock1.png"), get_heap_allocator()) };
 
+	// init inventory
+	{
+		world->inventory_items[arch_item_pine_wood].amount = 5;
+	}
+
 	// Player entity
 	Entity *player_en = entity_create();
 	setup_player(player_en);
@@ -306,7 +321,7 @@ int entry(int argc, char **argv)
 		float32 mouse_tile_x = mouse_pos_world.x;
 		float32 mouse_tile_y = mouse_pos_world.y;
 
-		// render
+		// calculating enable entities
 		for (int i = 0; i < MAX_ENTITY_COUNT; i++)
 		{
 			Entity *en = &world->entities[i];
@@ -318,7 +333,7 @@ int entry(int argc, char **argv)
 				{
 					Vector2 en_player_pos = player_en->pos;
 					Vector2 en_obj_pos = en->pos;
-					f32 lenght_dist_pos_obj_and_player = dist_lenght(en_player_pos, en_obj_pos);
+					f32 lenght_dist_pos_obj_and_player = v2_dist(en_player_pos, en_obj_pos);
 
 					if (lenght_dist_pos_obj_and_player < entity_selection_radius)
 					{
@@ -339,7 +354,7 @@ int entry(int argc, char **argv)
 							Vector2 mousenewpos = v2_sub(v2(mouse_tile_x, mouse_tile_y), v2_divf(size, 2.0));
 
 							// draw_circle(newpos, size, COLOR_WHITE);
-							if (dist_lenght(mousenewpos, newpos) < 7)
+							if (v2_dist(mousenewpos, newpos) < 7)
 							{
 								en->color = COLOR_RED;
 								world_frame.selected_entity = en;
@@ -396,6 +411,7 @@ int entry(int argc, char **argv)
 			}
 		}
 
+		// :render
 		for (int i = 0; i < MAX_ENTITY_COUNT; i++)
 		{
 			Entity *en = &world->entities[i];
@@ -417,6 +433,24 @@ int entry(int argc, char **argv)
 				}
 				}
 			}
+		}
+
+		// pickuu item
+		{
+			for (int i = 0; i < MAX_ENTITY_COUNT; i++)
+			{
+				Entity *en = &world->entities[i];
+				if (en->is_valid) {
+					// pick item
+					if ( en->is_item) {
+						if (fabsf(v2_dist(en->pos, player_en->pos)) < player_pickup_radius) {
+							world->inventory_items[en->arch].amount += 1;
+							entity_destroy(en);
+						}
+					}
+				}
+			}
+			
 		}
 
 		if (is_key_just_pressed(KEY_ESCAPE))
