@@ -2,7 +2,8 @@
 
 Gfx_Font *font;
 
-float sin_breathe(float time, float rate) {
+float sin_breathe(float time, float rate)
+{
 	return (sin(time * rate) + 1.0) / 2.0;
 }
 
@@ -33,7 +34,6 @@ float32 v2_dist(Vector2 a, Vector2 b)
 	return v2_length(v2_sub(a, b));
 }
 
-
 const int rock_health = 3;
 const int tree_health = 3;
 
@@ -41,16 +41,18 @@ const int tile_width = 8;
 const float entity_selection_radius = 100.0f;
 const float player_pickup_radius = 20.0f;
 
-
-int world_pos_to_tile_pos(float world_pos) {
+int world_pos_to_tile_pos(float world_pos)
+{
 	return roundf(world_pos / (float)tile_width);
 }
 
-float tile_pos_to_world_pos(int tile_pos) {
+float tile_pos_to_world_pos(int tile_pos)
+{
 	return ((float)tile_pos * (float)tile_width);
 }
 
-Vector2 round_v2_to_tile(Vector2 world_pos) {
+Vector2 round_v2_to_tile(Vector2 world_pos)
+{
 	world_pos.x = tile_pos_to_world_pos(world_pos_to_tile_pos(world_pos.x));
 	world_pos.y = tile_pos_to_world_pos(world_pos_to_tile_pos(world_pos.y));
 	return world_pos;
@@ -82,8 +84,9 @@ Sprite *get_sprite(SpriteID id)
 	return &sprites[0];
 }
 
-Vector2 get_sprite_size(Sprite* sprite) {
-	return (Vector2) { sprite->image->width, sprite->image->height };
+Vector2 get_sprite_size(Sprite *sprite)
+{
+	return (Vector2){sprite->image->width, sprite->image->height};
 }
 
 typedef enum EntityArchetype
@@ -98,6 +101,25 @@ typedef enum EntityArchetype
 	arch_item_pine_wood = 7,
 	ARCH_MAX,
 } EntityArchetype;
+
+SpriteID get_sprite_id_from_archetype(EntityArchetype arch)
+{
+	switch (arch)
+	{
+	case arch_item_pine_wood:
+		return SPRITE_item_pine_wood;
+		break;
+	case arch_item_rock0:
+		return SPRITE_item_rock0;
+		break;
+	case arch_item_rock1:
+		return SPRITE_item_rock1;
+		break;
+	default:
+		return 0;
+	}
+}
+
 typedef struct Entity
 {
 	bool is_valid;
@@ -110,12 +132,12 @@ typedef struct Entity
 	bool destroyable_world_item;
 	bool is_item;
 
-
 } Entity;
 // :entity
 #define MAX_ENTITY_COUNT 1024
 
-typedef struct ItemData {
+typedef struct ItemData
+{
 	int amount;
 } ItemData;
 
@@ -169,7 +191,8 @@ void setup_tree(Entity *en)
 	en->destroyable_world_item = true;
 }
 
-void setup_item_tree(Entity* en) {
+void setup_item_tree(Entity *en)
+{
 	en->arch = arch_item_pine_wood;
 	en->sprite_id = SPRITE_item_pine_wood;
 	en->is_item = true;
@@ -193,18 +216,19 @@ void setup_rock1(Entity *en)
 	en->destroyable_world_item = true;
 }
 
-void setup_item_rock0(Entity* en) {
+void setup_item_rock0(Entity *en)
+{
 	en->arch = arch_item_rock0;
 	en->sprite_id = SPRITE_item_rock0;
 	en->is_item = true;
 }
 
-void setup_item_rock1(Entity* en) {
+void setup_item_rock1(Entity *en)
+{
 	en->arch = arch_item_rock1;
 	en->sprite_id = SPRITE_item_rock1;
 	en->is_item = true;
 }
-
 
 Vector2 screen_to_world(Vector2 screen)
 {
@@ -235,28 +259,23 @@ int entry(int argc, char **argv)
 	Gfx_Font *font = load_font_from_disk(STR("C:/windows/fonts/arial.ttf"), get_temporary_allocator());
 	assert(font, "Failed loading arial.ttf, %d", GetLastError());
 
-	window.title = STR("Minimal Game Example OF UMOM");
+	window.title = STR("Pirate Game");
 	window.scaled_width = 1280; // We need to set the scaled size if we want to handle system scaling (DPI)
 	window.scaled_height = 720;
 	window.x = 200;
-	window.y = 90;
+	window.y = 200;
 	window.clear_color = hex_to_rgba(0x181818ff);
 
 	world = alloc(get_heap_allocator(), sizeof(World));
 	memset(world, 0, sizeof(World));
 
-	sprites[SPRITE_player] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite/player0.png"), get_heap_allocator()) };
-	sprites[SPRITE_tree0] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite/tree1.png"), get_heap_allocator()) };
-	sprites[SPRITE_rock0] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite/rock0.png"), get_heap_allocator()) };
-	sprites[SPRITE_rock1] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite/rock1.png"), get_heap_allocator()) };
-	sprites[SPRITE_item_pine_wood] = (Sprite){ .image=load_image_from_disk(STR("assets/aseprite/item-tree0.png"), get_heap_allocator()) };
-	sprites[SPRITE_item_rock0] = (Sprite){ .image=load_image_from_disk(STR("assets/aseprite/item-rock0.png"), get_heap_allocator()) };
-	sprites[SPRITE_item_rock1] = (Sprite){ .image=load_image_from_disk(STR("assets/aseprite/item-rock1.png"), get_heap_allocator()) };
-
-	// init inventory
-	{
-		world->inventory_items[arch_item_pine_wood].amount = 5;
-	}
+	sprites[SPRITE_player] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite-simplified/player.png"), get_heap_allocator())};
+	sprites[SPRITE_tree0] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite-simplified/tree1.png"), get_heap_allocator())};
+	sprites[SPRITE_rock0] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite-simplified/rock0.png"), get_heap_allocator())};
+	sprites[SPRITE_rock1] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite-simplified/rock1.png"), get_heap_allocator())};
+	sprites[SPRITE_item_pine_wood] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite-simplified/item_tree0.png"), get_heap_allocator())};
+	sprites[SPRITE_item_rock0] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite-simplified/item_rock0.png"), get_heap_allocator())};
+	sprites[SPRITE_item_rock1] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite-simplified/item_rock1.png"), get_heap_allocator())};
 
 	// Player entity
 	Entity *player_en = entity_create();
@@ -292,7 +311,7 @@ int entry(int argc, char **argv)
 	float64 seconds_counter = 0.0;
 	s32 frame_count = 0;
 
-	float zoom = 2;
+	float zoom = 5.3;
 	Vector2 camera_pos = v2(0, 0);
 
 	float64 last_time = os_get_current_time_in_seconds();
@@ -309,10 +328,9 @@ int entry(int argc, char **argv)
 		// :camera
 		{
 			Vector2 target_pos = player_en->pos;
-			animate_v2_to_target(&camera_pos, target_pos, delta_t, 5.0f);
-
+			animate_v2_to_target(&camera_pos, target_pos, delta_t, 30.0f);
 			draw_frame.view = m4_make_scale(v3(1.0, 1.0, 1.0));
-			draw_frame.view = m4_mul(draw_frame.view, m4_make_translation(v3(camera_pos.x, camera_pos.y, 1.0)));
+			draw_frame.view = m4_mul(draw_frame.view, m4_make_translation(v3(camera_pos.x, camera_pos.y, 0)));
 			draw_frame.view = m4_mul(draw_frame.view, m4_make_scale(v3(1.0 / zoom, 1.0 / zoom, 1.0)));
 		}
 
@@ -338,7 +356,7 @@ int entry(int argc, char **argv)
 					if (lenght_dist_pos_obj_and_player < entity_selection_radius)
 					{
 						en->color = COLOR_WHITE;
-						
+
 						// calculating cliackable entity
 						{
 
@@ -350,7 +368,7 @@ int entry(int argc, char **argv)
 							f32 xCenter = (x1 + x2) * 0.5;
 							f32 yCenter = (y1 + y2) * 0.5;
 
-							Vector2 newpos = v2(xCenter - (sprite->image->width * 0.3), yCenter  - (sprite->image->height * 0.47));
+							Vector2 newpos = v2(xCenter - (sprite->image->width * 0.3), yCenter - (sprite->image->height * 0.47));
 							Vector2 mousenewpos = v2_sub(v2(mouse_tile_x, mouse_tile_y), v2_divf(size, 2.0));
 
 							// draw_circle(newpos, size, COLOR_WHITE);
@@ -362,46 +380,51 @@ int entry(int argc, char **argv)
 						}
 					}
 				}
-			} else if (en->is_valid && !en->destroyable_world_item) {
+			}
+			else if (en->is_valid && !en->destroyable_world_item)
+			{
 				en->color = COLOR_WHITE;
 			}
 		}
 
 		// clicable thing
 		{
-			Entity * selected_en = world_frame.selected_entity;
+			Entity *selected_en = world_frame.selected_entity;
 
-			if (is_key_just_pressed(MOUSE_BUTTON_LEFT)) {
+			if (is_key_just_pressed(MOUSE_BUTTON_LEFT))
+			{
 				consume_key_just_pressed(MOUSE_BUTTON_LEFT);
 
-				if (selected_en) {
+				if (selected_en)
+				{
 
 					printf("selected %i\n", selected_en->health);
 					selected_en->health -= 1;
-					if (selected_en->health <= 0 ) {
+					if (selected_en->health <= 0)
+					{
 						switch (selected_en->arch)
 						{
 						case arch_tree:
-							{
-								Entity *en = entity_create();
-								setup_item_tree(en);
-								en->pos = selected_en->pos;
-							}
-							break;
+						{
+							Entity *en = entity_create();
+							setup_item_tree(en);
+							en->pos = selected_en->pos;
+						}
+						break;
 						case arch_rock0:
-							{
-								Entity *en = entity_create();
-								setup_item_rock0(en);
-								en->pos = selected_en->pos;
-							}
-							break;
+						{
+							Entity *en = entity_create();
+							setup_item_rock0(en);
+							en->pos = selected_en->pos;
+						}
+						break;
 						case arch_rock1:
-							{
-								Entity *en = entity_create();
-								setup_item_rock1(en);
-								en->pos = selected_en->pos;
-							}
-							break;
+						{
+							Entity *en = entity_create();
+							setup_item_rock1(en);
+							en->pos = selected_en->pos;
+						}
+						break;
 						default:
 							break;
 						}
@@ -423,11 +446,14 @@ int entry(int argc, char **argv)
 				default:
 				{
 					Matrix4 xform = m4_scalar(1.0);
-					if (en->is_item) {
+					if (en->is_item)
+					{
 						xform = m4_translate(xform, v3(0, 2.0 * sin_breathe(os_get_current_time_in_seconds(), 5.0), 0));
 					}
+					xform = m4_translate(xform, v3(0, tile_width * -0.5, 0));
 					xform = m4_translate(xform, v3(en->pos.x, en->pos.y, 0));
-					xform = m4_translate(xform, v3( get_sprite_size(sprite).x * -0.1, 0.0, 0));
+					xform = m4_translate(xform, v3(get_sprite_size(sprite).x * -0.5, 0.0, 0));
+
 					draw_image_xform(sprite->image, xform, get_sprite_size(sprite), en->color);
 					break;
 				}
@@ -435,22 +461,73 @@ int entry(int argc, char **argv)
 			}
 		}
 
-		// pickuu item
+		// pick item
 		{
 			for (int i = 0; i < MAX_ENTITY_COUNT; i++)
 			{
 				Entity *en = &world->entities[i];
-				if (en->is_valid) {
+				if (en->is_valid)
+				{
 					// pick item
-					if ( en->is_item) {
-						if (fabsf(v2_dist(en->pos, player_en->pos)) < player_pickup_radius) {
+					if (en->is_item)
+					{
+						if (fabsf(v2_dist(en->pos, player_en->pos)) < player_pickup_radius)
+						{
 							world->inventory_items[en->arch].amount += 1;
 							entity_destroy(en);
 						}
 					}
 				}
 			}
-			
+		}
+
+		// : UI rendering
+		{
+			float width = 240.0;
+			float height = 135.0;
+			draw_frame.view = m4_scalar(1.0);
+			draw_frame.projection = m4_make_orthographic_projection(0.0, width, 0.0, height, -1, 10);
+
+			float y_pos = 70.0;
+
+			int item_count = 0;
+			for (int i = 0; i < ARCH_MAX; i++)
+			{
+				ItemData *item = &world->inventory_items[i];
+				if (item->amount > 0)
+				{
+					item_count += 1;
+				}
+			}
+
+			const float icon_thing = 8.0;
+			const float padding = 2.0;
+			float icon_width = icon_thing + padding;
+
+			float entire_thing_width_idk = item_count * icon_width;
+			float x_start_pos = (width / 2.0) - (entire_thing_width_idk / 2.0) + (icon_width * 0.5);
+
+			int slot_index = 0;
+			for (int i = 0; i < ARCH_MAX; i++)
+			{
+				ItemData *item = &world->inventory_items[i];
+				if (item->amount > 0)
+				{
+
+					float slot_index_offset = slot_index * icon_width;
+
+					Matrix4 xform = m4_scalar(1.0);
+					xform = m4_translate(xform, v3(x_start_pos + slot_index_offset, y_pos, 0.0));
+					xform = m4_translate(xform, v3(-4, -4, 0.0));
+					draw_rect_xform(xform, v2(8, 8), COLOR_BLACK);
+
+					Sprite *sprite = get_sprite(get_sprite_id_from_archetype(i));
+
+					draw_image_xform(sprite->image, xform, get_sprite_size(sprite), COLOR_WHITE);
+
+					slot_index += 1;
+				}
+			}
 		}
 
 		if (is_key_just_pressed(KEY_ESCAPE))
