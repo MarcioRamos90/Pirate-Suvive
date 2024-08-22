@@ -38,8 +38,8 @@ const int rock_health = 3;
 const int tree_health = 3;
 
 const int tile_width = 8;
-const float entity_selection_radius = 100.0f;
-const float player_pickup_radius = 20.0f;
+const float entity_selection_radius = 50.0f;
+const float player_pickup_radius = 7.0f;
 
 int world_pos_to_tile_pos(float world_pos)
 {
@@ -254,6 +254,11 @@ Vector2 get_mouse_world_pos()
 	return screen_to_world(v2(input_frame.mouse_x, input_frame.mouse_y));
 }
 
+Vector2 get_area_allowed(int size_allowed) {
+	int half_of_size = size_allowed * 0.5;
+	return v2(get_random_float32_in_range(-half_of_size, half_of_size), get_random_float32_in_range(-half_of_size, half_of_size));
+}
+
 int entry(int argc, char **argv)
 {
 	Gfx_Font *font = load_font_from_disk(STR("C:/windows/fonts/arial.ttf"), get_temporary_allocator());
@@ -264,7 +269,7 @@ int entry(int argc, char **argv)
 	window.scaled_height = 720;
 	window.x = 200;
 	window.y = 200;
-	window.clear_color = hex_to_rgba(0x181818ff);
+	window.clear_color = COLOR_BLUE;
 
 	world = alloc(get_heap_allocator(), sizeof(World));
 	memset(world, 0, sizeof(World));
@@ -288,7 +293,7 @@ int entry(int argc, char **argv)
 	{
 		Entity *en = entity_create();
 		setup_rock0(en);
-		en->pos = v2(get_random_float32_in_range(-the_world_size, the_world_size), get_random_float32_in_range(-the_world_size, the_world_size));
+		en->pos = get_area_allowed(the_world_size);
 	}
 
 	// rock 1 entities
@@ -296,7 +301,7 @@ int entry(int argc, char **argv)
 	{
 		Entity *en = entity_create();
 		setup_rock1(en);
-		en->pos = v2(get_random_float32_in_range(-the_world_size, the_world_size), get_random_float32_in_range(-the_world_size, the_world_size));
+		en->pos = get_area_allowed(the_world_size);
 	}
 
 	// Tree entities
@@ -304,7 +309,7 @@ int entry(int argc, char **argv)
 	{
 		Entity *en = entity_create();
 		setup_tree(en);
-		en->pos = v2(get_random_float32_in_range(-the_world_size, the_world_size), get_random_float32_in_range(-the_world_size, the_world_size));
+		en->pos = get_area_allowed(the_world_size);
 	}
 
 	// vars to debug frames
@@ -333,10 +338,12 @@ int entry(int argc, char **argv)
 			draw_frame.view = m4_mul(draw_frame.view, m4_make_translation(v3(camera_pos.x, camera_pos.y, 0)));
 			draw_frame.view = m4_mul(draw_frame.view, m4_make_scale(v3(1.0 / zoom, 1.0 / zoom, 1.0)));
 		}
+
 		// :island
 		{
 			Matrix4	xform = m4_scalar(1.0);
-			draw_rect(v2(0 - the_world_size, 0 - the_world_size), v2(the_world_size*2, the_world_size*2), v4(0.0, 0.5, 0.0, 1.0));
+			int half_world = the_world_size * 0.5;
+			draw_rect(v2(0 - half_world, 0 - half_world), v2(half_world*2, half_world*2), v4(0.0, 0.5, 0.0, 1.0));
 		}
 
 		os_update();
@@ -344,7 +351,7 @@ int entry(int argc, char **argv)
 		float32 mouse_tile_x = mouse_pos_world.x;
 		float32 mouse_tile_y = mouse_pos_world.y;
 		
-		// calculating enable entities
+		//:enable and :select entities :clicable_area
 		for (int i = 0; i < MAX_ENTITY_COUNT; i++)
 		{
 			Entity *en = &world->entities[i];
@@ -365,7 +372,8 @@ int entry(int argc, char **argv)
 						// calculating cliackable entity
 						{
 
-							Vector2 size = v2(15, 15);
+							int size = 5;
+							Vector2 size_v2 = v2(size, size);
 							f32 x1 = en->pos.x;
 							f32 x2 = en->pos.x + sprite->image->width;
 							f32 y1 = en->pos.y;
@@ -373,11 +381,11 @@ int entry(int argc, char **argv)
 							f32 xCenter = (x1 + x2) * 0.5;
 							f32 yCenter = (y1 + y2) * 0.5;
 
-							Vector2 newpos = v2(xCenter - (sprite->image->width * 0.3), yCenter - (sprite->image->height * 0.47));
-							Vector2 mousenewpos = v2_sub(v2(mouse_tile_x, mouse_tile_y), v2_divf(size, 2.0));
+							Vector2 newpos = v2(en->pos.x - (size / 2), en->pos.y - size);
+							Vector2 mousenewpos = v2_sub(v2(mouse_tile_x, mouse_tile_y), v2_divf(size_v2, 2.0));
 
-							// draw_circle(newpos, size, COLOR_WHITE);
-							if (v2_dist(mousenewpos, newpos) < 7)
+							// draw_circle(newpos, size_v2, COLOR_WHITE);
+							if (v2_dist(mousenewpos, newpos) < 3)
 							{
 								en->color = COLOR_RED;
 								world_frame.selected_entity = en;
@@ -524,7 +532,7 @@ int entry(int argc, char **argv)
 					Matrix4 xform = m4_scalar(1.0);
 					xform = m4_translate(xform, v3(x_start_pos + slot_index_offset, y_pos, 0.0));
 					xform = m4_translate(xform, v3(-4, -4, 0.0));
-					draw_rect_xform(xform, v2(8, 8), COLOR_BLACK);
+					draw_rect_xform(xform, v2(8, 8), v4(0.0, 0.0, 0.0, 0.5));
 
 					Sprite *sprite = get_sprite(get_sprite_id_from_archetype(i));
 
