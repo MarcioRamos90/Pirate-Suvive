@@ -284,7 +284,7 @@ int entry(int argc, char **argv)
 	int the_world_size = 500;
 
 	// rock 0 entities
-	for (int i = 1; i < 30; i++)
+	for (int i = 1; i < 50; i++)
 	{
 		Entity *en = entity_create();
 		setup_rock0(en);
@@ -300,7 +300,7 @@ int entry(int argc, char **argv)
 	}
 
 	// Tree entities
-	for (int i = 1; i < 100; i++)
+	for (int i = 1; i < 200; i++)
 	{
 		Entity *en = entity_create();
 		setup_tree(en);
@@ -333,12 +333,17 @@ int entry(int argc, char **argv)
 			draw_frame.view = m4_mul(draw_frame.view, m4_make_translation(v3(camera_pos.x, camera_pos.y, 0)));
 			draw_frame.view = m4_mul(draw_frame.view, m4_make_scale(v3(1.0 / zoom, 1.0 / zoom, 1.0)));
 		}
+		// :island
+		{
+			Matrix4	xform = m4_scalar(1.0);
+			draw_rect(v2(0 - the_world_size, 0 - the_world_size), v2(the_world_size*2, the_world_size*2), v4(0.0, 0.5, 0.0, 1.0));
+		}
 
 		os_update();
 		Vector2 mouse_pos_world = get_mouse_world_pos();
 		float32 mouse_tile_x = mouse_pos_world.x;
 		float32 mouse_tile_y = mouse_pos_world.y;
-
+		
 		// calculating enable entities
 		for (int i = 0; i < MAX_ENTITY_COUNT; i++)
 		{
