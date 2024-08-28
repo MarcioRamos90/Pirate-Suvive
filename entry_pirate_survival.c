@@ -501,7 +501,7 @@ int entry(int argc, char **argv)
 			draw_frame.view = m4_scalar(1.0);
 			draw_frame.projection = m4_make_orthographic_projection(0.0, width, 0.0, height, -1, 10);
 
-			float y_pos = 70.0;
+			float y_pos = 10.0;
 
 			int item_count = 0;
 			for (int i = 0; i < ARCH_MAX; i++)
@@ -514,11 +514,19 @@ int entry(int argc, char **argv)
 			}
 
 			const float icon_thing = 8.0;
-			const float padding = 2.0;
-			float icon_width = icon_thing + padding;
+			float icon_width = icon_thing;
 
-			float entire_thing_width_idk = item_count * icon_width;
-			float x_start_pos = (width / 2.0) - (entire_thing_width_idk / 2.0) + (icon_width * 0.5);
+			const int icon_row_count = 8;
+
+			float entire_thing_width_idk = icon_row_count * icon_width;
+			float x_start_pos = (width / 2.0) - (entire_thing_width_idk / 2.0);
+			
+			// inventory bg box rendering
+			{
+				Matrix4 xform =  m4_scalar(1.0);
+				xform = m4_translate(xform, v3(x_start_pos, y_pos, 0.0));
+				draw_rect_xform(xform, v2(entire_thing_width_idk, icon_thing), v4(0,0,0,0.5));
+			}
 
 			int slot_index = 0;
 			for (int i = 0; i < ARCH_MAX; i++)
@@ -531,14 +539,24 @@ int entry(int argc, char **argv)
 
 					Matrix4 xform = m4_scalar(1.0);
 					xform = m4_translate(xform, v3(x_start_pos + slot_index_offset, y_pos, 0.0));
-					xform = m4_translate(xform, v3(-4, -4, 0.0));
-					draw_rect_xform(xform, v2(8, 8), v4(0.0, 0.0, 0.0, 0.5));
+
+					draw_rect_xform(xform, v2(8, 8), v4(1.0, 1.0, 1.0, 0.2));
 
 					Sprite *sprite = get_sprite(get_sprite_id_from_archetype(i));
 
-					draw_image_xform(sprite->image, xform, get_sprite_size(sprite), COLOR_WHITE);
+					xform = m4_translate(xform, v3(icon_width * 0.5, icon_width * 0.5, 0.0));
+					// todo: make little juice dance 
+					// {
+					// 	float one_zero_on = 0.5 * sin_breathe(os_get_current_time_in_seconds(), 20.0);
+					// 	xform = m4_translate(xform, v3(one_zero_on * 0.5, one_zero_on * 0.5, 0.0));
+					// }
+					xform = m4_translate(xform, v3(get_sprite_size(sprite).x * -0.5, get_sprite_size(sprite).y * -0.5, 0.0));
 
+					draw_image_xform(sprite->image, xform, get_sprite_size(sprite), COLOR_WHITE);
 					slot_index += 1;
+
+					// draw_text_xform(font, STR("H"), 0.5, xform, v2(1, 1), COLOR_WHITE);
+
 				}
 			}
 		}
