@@ -1,7 +1,5 @@
-#define COLOR_BLACK_TRANSPARENT ((Vector4){0.5, 0.5, 0.5, 1})
 
-Gfx_Font *font;
-
+// : helpers
 float sin_breathe(float time, float rate)
 {
 	return (sin(time * rate) + 1.0) / 2.0;
@@ -34,8 +32,46 @@ float32 v2_dist(Vector2 a, Vector2 b)
 	return v2_length(v2_sub(a, b));
 }
 
+Vector2 screen_to_world(Vector2 screen)
+{
+	Matrix4 proj = draw_frame.projection;
+	Matrix4 view = draw_frame.view;
+	float window_w = window.width;
+	float window_h = window.height;
+
+	// Normalize the mouse coordinates
+	float ndc_x = (screen.x / (window_w * 0.5f)) - 1.0f;
+	float ndc_y = (screen.y / (window_h * 0.5f)) - 1.0f;
+
+	// Transform to world coordinates
+	Vector4 world_pos = v4(ndc_x, ndc_y, 0, 1);
+	world_pos = m4_transform(m4_inverse(proj), world_pos);
+	world_pos = m4_transform(view, world_pos);
+
+	return world_pos.xy;
+}
+
+Vector2 get_mouse_world_pos()
+{
+	return screen_to_world(v2(input_frame.mouse_x, input_frame.mouse_y));
+}
+
+Vector2 get_area_allowed(int size_allowed) {
+	int half_of_size = size_allowed * 0.5;
+	return v2(get_random_float32_in_range(-half_of_size, half_of_size), get_random_float32_in_range(-half_of_size, half_of_size));
+}
+
+
+// :game things
+#define COLOR_BLACK_TRANSPARENT ((Vector4){0, 0, 0, 0.5})
+#define COLOR_GREY ((Vector4){0.3, 0.3, 0.3,1})
+
+Gfx_Font *font;
+
+// :var :health
 const int rock_health = 3;
 const int tree_health = 3;
+const int bush_health = 2;
 
 const int tile_width = 8;
 const float entity_selection_radius = 50.0f;
@@ -58,6 +94,7 @@ Vector2 round_v2_to_tile(Vector2 world_pos)
 	return world_pos;
 }
 
+// :sprite type
 typedef struct Sprite
 {
 	Gfx_Image *image;
@@ -69,6 +106,10 @@ typedef enum SpriteID
 	SPRITE_tree0,
 	SPRITE_rock0,
 	SPRITE_rock1,
+	SPRITE_bush0,
+	SPRITE_bush1,
+	SPRITE_bush0_item0,
+	SPRITE_bush1_item0,
 	SPRITE_item_pine_wood,
 	SPRITE_item_rock0,
 	SPRITE_item_rock1,
@@ -96,9 +137,13 @@ typedef enum EntityArchetype
 	arch_rock1 = 2,
 	arch_tree = 3,
 	arch_player = 4,
-	arch_item_rock0 = 5,
-	arch_item_rock1 = 6,
-	arch_item_pine_wood = 7,
+	arch_bush0 = 5,
+	arch_bush1 = 6,
+	arch_bush0_item0 = 7,
+	arch_bush1_item0 = 8,
+	arch_item_rock0 = 9,
+	arch_item_rock1 = 10,
+	arch_item_pine_wood = 11,
 	ARCH_MAX,
 } EntityArchetype;
 
@@ -115,11 +160,17 @@ SpriteID get_sprite_id_from_archetype(EntityArchetype arch)
 	case arch_item_rock1:
 		return SPRITE_item_rock1;
 		break;
+	case arch_bush0_item0:
+		return SPRITE_bush0_item0;
+		break;
+	case arch_bush1_item0:
+		return SPRITE_bush1_item0;
+		break;
 	default:
 		return 0;
 	}
 }
-
+// :entity :type
 typedef struct Entity
 {
 	bool is_valid;
@@ -176,11 +227,45 @@ void entity_destroy(Entity *entity)
 	memset(entity, 0, sizeof(Entity));
 }
 
+// :setup
 void setup_player(Entity *en)
 {
 	en->arch = arch_player;
 	en->sprite_id = SPRITE_player;
 }
+
+void setup_bush0(Entity *en)
+{
+	en->arch = arch_bush0;
+	en->sprite_id = SPRITE_bush0;
+
+	en->health = bush_health;
+	en->destroyable_world_item = true;
+}
+
+void setup_bush0_item0(Entity *en)
+{
+	en->arch = arch_bush0_item0;
+	en->sprite_id = SPRITE_bush0_item0;
+	en->is_item = true;
+}
+
+void setup_bush1(Entity *en)
+{
+	en->arch = arch_bush1;
+	en->sprite_id = SPRITE_bush1;
+
+	en->health = bush_health;
+	en->destroyable_world_item = true;
+}
+
+void setup_bush1_item0(Entity *en)
+{
+	en->arch = arch_bush1_item0;
+	en->sprite_id = SPRITE_bush1_item0;
+	en->is_item = true;
+}
+
 
 void setup_tree(Entity *en)
 {
@@ -230,34 +315,7 @@ void setup_item_rock1(Entity *en)
 	en->is_item = true;
 }
 
-Vector2 screen_to_world(Vector2 screen)
-{
-	Matrix4 proj = draw_frame.projection;
-	Matrix4 view = draw_frame.view;
-	float window_w = window.width;
-	float window_h = window.height;
 
-	// Normalize the mouse coordinates
-	float ndc_x = (screen.x / (window_w * 0.5f)) - 1.0f;
-	float ndc_y = (screen.y / (window_h * 0.5f)) - 1.0f;
-
-	// Transform to world coordinates
-	Vector4 world_pos = v4(ndc_x, ndc_y, 0, 1);
-	world_pos = m4_transform(m4_inverse(proj), world_pos);
-	world_pos = m4_transform(view, world_pos);
-
-	return world_pos.xy;
-}
-
-Vector2 get_mouse_world_pos()
-{
-	return screen_to_world(v2(input_frame.mouse_x, input_frame.mouse_y));
-}
-
-Vector2 get_area_allowed(int size_allowed) {
-	int half_of_size = size_allowed * 0.5;
-	return v2(get_random_float32_in_range(-half_of_size, half_of_size), get_random_float32_in_range(-half_of_size, half_of_size));
-}
 
 int entry(int argc, char **argv)
 {
@@ -274,6 +332,7 @@ int entry(int argc, char **argv)
 	world = alloc(get_heap_allocator(), sizeof(World));
 	memset(world, 0, sizeof(World));
 
+	// :load image
 	sprites[SPRITE_player] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite-simplified/player.png"), get_heap_allocator())};
 	sprites[SPRITE_tree0] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite-simplified/tree1.png"), get_heap_allocator())};
 	sprites[SPRITE_rock0] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite-simplified/rock0.png"), get_heap_allocator())};
@@ -281,6 +340,10 @@ int entry(int argc, char **argv)
 	sprites[SPRITE_item_pine_wood] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite-simplified/item_tree0.png"), get_heap_allocator())};
 	sprites[SPRITE_item_rock0] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite-simplified/item_rock0.png"), get_heap_allocator())};
 	sprites[SPRITE_item_rock1] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite-simplified/item_rock1.png"), get_heap_allocator())};
+	sprites[SPRITE_bush0] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite-simplified/bush0.png"), get_heap_allocator())};
+	sprites[SPRITE_bush1] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite-simplified/bush1.png"), get_heap_allocator())};
+	sprites[SPRITE_bush0_item0] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite-simplified/item_bush0.png"), get_heap_allocator())};
+	sprites[SPRITE_bush1_item0] = (Sprite){.image = load_image_from_disk(STR("assets/aseprite-simplified/item_bush1.png"), get_heap_allocator())};
 
 	// Player entity
 	Entity *player_en = entity_create();
@@ -309,6 +372,22 @@ int entry(int argc, char **argv)
 	{
 		Entity *en = entity_create();
 		setup_tree(en);
+		en->pos = get_area_allowed(the_world_size);
+	}
+
+	// :create bush0 entities
+	for (int i = 1; i < 200; i++)
+	{
+		Entity *en = entity_create();
+		setup_bush0(en);
+		en->pos = get_area_allowed(the_world_size);
+	}
+
+	// :create bush1 entities
+	for (int i = 1; i < 100; i++)
+	{
+		Entity *en = entity_create();
+		setup_bush1(en);
 		en->pos = get_area_allowed(the_world_size);
 	}
 
@@ -343,7 +422,7 @@ int entry(int argc, char **argv)
 		{
 			Matrix4	xform = m4_scalar(1.0);
 			int half_world = the_world_size * 0.5;
-			draw_rect(v2(0 - half_world, 0 - half_world), v2(half_world*2, half_world*2), v4(0.0, 0.5, 0.0, 1.0));
+			draw_rect(v2(0 - half_world, 0 - half_world), v2(half_world*2, half_world*2), v4(0.0, 0.2, 0.0, 1.0));
 		}
 
 		os_update();
@@ -358,7 +437,7 @@ int entry(int argc, char **argv)
 			if (en->is_valid && en->destroyable_world_item)
 			{
 				Sprite *sprite = get_sprite(en->sprite_id);
-				en->color = COLOR_BLACK_TRANSPARENT;
+				en->color = COLOR_GREY;
 				// calculating enable entities
 				{
 					Vector2 en_player_pos = player_en->pos;
@@ -400,7 +479,7 @@ int entry(int argc, char **argv)
 			}
 		}
 
-		// clicable thing
+		// :destroy :render :item
 		{
 			Entity *selected_en = world_frame.selected_entity;
 
@@ -435,6 +514,20 @@ int entry(int argc, char **argv)
 						{
 							Entity *en = entity_create();
 							setup_item_rock1(en);
+							en->pos = selected_en->pos;
+						}
+						break;
+						case arch_bush0:
+						{
+							Entity *en = entity_create();
+							setup_bush0_item0(en);
+							en->pos = selected_en->pos;
+						}
+						break;
+						case arch_bush1:
+						{
+							Entity *en = entity_create();
+							setup_bush1_item0(en);
 							en->pos = selected_en->pos;
 						}
 						break;
@@ -525,7 +618,7 @@ int entry(int argc, char **argv)
 			{
 				Matrix4 xform =  m4_scalar(1.0);
 				xform = m4_translate(xform, v3(x_start_pos, y_pos, 0.0));
-				draw_rect_xform(xform, v2(entire_thing_width_idk, icon_thing), v4(0,0,0,0.5));
+				draw_rect_xform(xform, v2(entire_thing_width_idk, icon_thing), COLOR_BLACK_TRANSPARENT);
 			}
 
 			int slot_index = 0;
