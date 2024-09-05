@@ -56,15 +56,15 @@ Vector2 get_mouse_world_pos()
 	return screen_to_world(v2(input_frame.mouse_x, input_frame.mouse_y));
 }
 
-Vector2 get_area_allowed(int size_allowed) {
+Vector2 get_area_allowed(int size_allowed)
+{
 	int half_of_size = size_allowed * 0.5;
 	return v2(get_random_float32_in_range(-half_of_size, half_of_size), get_random_float32_in_range(-half_of_size, half_of_size));
 }
 
-
 // :game things
 #define COLOR_BLACK_TRANSPARENT ((Vector4){0, 0, 0, 0.5})
-#define COLOR_GREY ((Vector4){0.3, 0.3, 0.3,1})
+#define COLOR_GREY ((Vector4){0.3, 0.3, 0.3, 1})
 
 Gfx_Font *font;
 
@@ -190,6 +190,8 @@ typedef struct Entity
 typedef struct ItemData
 {
 	int amount;
+	bool selected;
+	bool hover;
 } ItemData;
 
 // :world
@@ -266,7 +268,6 @@ void setup_bush1_item0(Entity *en)
 	en->is_item = true;
 }
 
-
 void setup_tree(Entity *en)
 {
 	en->arch = arch_tree;
@@ -314,8 +315,6 @@ void setup_item_rock1(Entity *en)
 	en->sprite_id = SPRITE_item_rock1;
 	en->is_item = true;
 }
-
-
 
 int entry(int argc, char **argv)
 {
@@ -420,17 +419,17 @@ int entry(int argc, char **argv)
 
 		// :island
 		{
-			Matrix4	xform = m4_scalar(1.0);
+			Matrix4 xform = m4_scalar(1.0);
 			int half_world = the_world_size * 0.5;
-			draw_rect(v2(0 - half_world, 0 - half_world), v2(half_world*2, half_world*2), v4(0.0, 0.2, 0.0, 1.0));
+			draw_rect(v2(0 - half_world, 0 - half_world), v2(half_world * 2, half_world * 2), v4(0.0, 0.2, 0.0, 1.0));
 		}
 
 		os_update();
 		Vector2 mouse_pos_world = get_mouse_world_pos();
 		float32 mouse_tile_x = mouse_pos_world.x;
 		float32 mouse_tile_y = mouse_pos_world.y;
-		
-		//:enable and :select entities :clicable_area
+
+		//: enable and :select entities :clicable_area
 		for (int i = 0; i < MAX_ENTITY_COUNT; i++)
 		{
 			Entity *en = &world->entities[i];
@@ -613,15 +612,16 @@ int entry(int argc, char **argv)
 
 			float entire_thing_width_idk = icon_row_count * icon_width;
 			float x_start_pos = (width / 2.0) - (entire_thing_width_idk / 2.0);
-			
+
 			// inventory bg box rendering
 			{
-				Matrix4 xform =  m4_scalar(1.0);
+				Matrix4 xform = m4_scalar(1.0);
 				xform = m4_translate(xform, v3(x_start_pos, y_pos, 0.0));
 				draw_rect_xform(xform, v2(entire_thing_width_idk, icon_thing), COLOR_BLACK_TRANSPARENT);
 			}
 
 			int slot_index = 0;
+			Vector4 color = v4(1.0, 1.0, 1.0, 0.2);
 			for (int i = 0; i < ARCH_MAX; i++)
 			{
 				ItemData *item = &world->inventory_items[i];
@@ -633,23 +633,64 @@ int entry(int argc, char **argv)
 					Matrix4 xform = m4_scalar(1.0);
 					xform = m4_translate(xform, v3(x_start_pos + slot_index_offset, y_pos, 0.0));
 
-					draw_rect_xform(xform, v2(8, 8), v4(1.0, 1.0, 1.0, 0.2));
+					// :hove :select :button
+					{
+						Vector2 mouse_pos_world = get_mouse_world_pos();
+						float32 mouse_tile_x = mouse_pos_world.x;
+						float32 mouse_tile_y = mouse_pos_world.y;
+
+						bool pressed = false;
+
+						float L = xform.m[0][3];
+						float R = L + 8;
+						float B = xform.m[1][3];
+						float T = B + 8;
+
+						float mx = mouse_tile_x;
+						float my = mouse_tile_y;
+						if (mx >= L && mx < R && my >= B && my < T)
+						{
+
+							// if (is_key_down(MOUSE_BUTTON_LEFT))
+							// {
+							// 	color = v4(.05, .05, .05, 1);
+							// }
+							// pressed = is_key_just_released(MOUSE_BUTTON_LEFT);
+							item->hover = true;
+						}
+						else
+						{
+
+							item->hover = false;
+						}
+					}
 
 					Sprite *sprite = get_sprite(get_sprite_id_from_archetype(i));
 
+					if (item->hover)
+					{
+						color = v4(.15, .15, .15, 1);
+					}
+					else
+					{
+						color = v4(1.0, 1.0, 1.0, 0.2);
+					}
+
+					draw_rect_xform(xform, v2(8, 8), color);
+
 					xform = m4_translate(xform, v3(icon_width * 0.5, icon_width * 0.5, 0.0));
-					// todo: make little juice dance 
-					// {
-					// 	float one_zero_on = 0.5 * sin_breathe(os_get_current_time_in_seconds(), 20.0);
-					// 	xform = m4_translate(xform, v3(one_zero_on * 0.5, one_zero_on * 0.5, 0.0));
-					// }
+
+					if (item->hover)
+					{
+						float one_zero_on = 0.5 * sin_breathe(os_get_current_time_in_seconds(), 20.0);
+						xform = m4_translate(xform, v3(one_zero_on * 0.5, one_zero_on * 0.5, 0.0));
+					}
 					xform = m4_translate(xform, v3(get_sprite_size(sprite).x * -0.5, get_sprite_size(sprite).y * -0.5, 0.0));
 
 					draw_image_xform(sprite->image, xform, get_sprite_size(sprite), COLOR_WHITE);
 					slot_index += 1;
 
-					// draw_text_xform(font, STR("H"), 0.5, xform, v2(1, 1), COLOR_WHITE);
-
+					// draw_text_xform(font, STR("H"), 0.5, xform, v2(.5, .5), COLOR_WHITE);
 				}
 			}
 		}
