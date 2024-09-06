@@ -1,3 +1,4 @@
+#define FONT_HEIGHT 48
 
 // : helpers
 float sin_breathe(float time, float rate)
@@ -318,7 +319,7 @@ void setup_item_rock1(Entity *en)
 
 int entry(int argc, char **argv)
 {
-	Gfx_Font *font = load_font_from_disk(STR("C:/windows/fonts/arial.ttf"), get_temporary_allocator());
+	font = load_font_from_disk(STR("C:/windows/fonts/arial.ttf"), get_temporary_allocator());
 	assert(font, "Failed loading arial.ttf, %d", GetLastError());
 
 	window.title = STR("Pirate Game");
@@ -684,13 +685,15 @@ int entry(int argc, char **argv)
 					{
 						float one_zero_on = 0.5 * sin_breathe(os_get_current_time_in_seconds(), 20.0);
 						xform = m4_translate(xform, v3(one_zero_on * 0.5, one_zero_on * 0.5, 0.0));
+
+						// draw_text(font, STR("Right-click for thing"), FONT_HEIGHT, v2(xform.m[0][3], xform.m[1][3]), v2(1, 1), COLOR_WHITE);
+
+						draw_text(font, STR("I am text"), FONT_HEIGHT, v2(0, 0),  v2(1, 1), COLOR_WHITE);
 					}
 					xform = m4_translate(xform, v3(get_sprite_size(sprite).x * -0.5, get_sprite_size(sprite).y * -0.5, 0.0));
 
 					draw_image_xform(sprite->image, xform, get_sprite_size(sprite), COLOR_WHITE);
-					slot_index += 1;
-
-					// draw_text_xform(font, STR("H"), 0.5, xform, v2(.5, .5), COLOR_WHITE);
+					slot_index += 1;					
 				}
 			}
 		}
