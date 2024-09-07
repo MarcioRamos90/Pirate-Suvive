@@ -183,7 +183,6 @@ typedef struct Entity
 	int health;
 	bool destroyable_world_item;
 	bool is_item;
-
 } Entity;
 // :entity
 #define MAX_ENTITY_COUNT 1024
@@ -193,8 +192,31 @@ typedef struct ItemData
 	int amount;
 	bool selected;
 	bool hover;
+	EntityArchetype arch;
 } ItemData;
-
+string get_entity_archtype_item_descritions(EntityArchetype arch)
+{
+	switch (arch)
+	{
+	case arch_item_pine_wood:
+		return STR("a piece of wood");
+		break;
+	case arch_item_rock0:
+		return STR("a little of rock");
+		break;
+	case arch_item_rock1:
+		return STR("gold!");
+		break;
+	case arch_bush0_item0:
+		return STR("a little of grass");
+		break;
+	case arch_bush1_item0:
+		return STR("a little of fruits");
+		break;
+	default:
+		return STR("weird, it's nothing");;
+	}
+}
 // :world
 typedef struct World
 {
@@ -319,7 +341,7 @@ void setup_item_rock1(Entity *en)
 
 int entry(int argc, char **argv)
 {
-	font = load_font_from_disk(STR("C:/windows/fonts/arial.ttf"), get_temporary_allocator());
+	font = load_font_from_disk(STR("C:/windows/fonts/arial.ttf"), get_heap_allocator());
 	assert(font, "Failed loading arial.ttf, %d", GetLastError());
 
 	window.title = STR("Pirate Game");
@@ -567,7 +589,7 @@ int entry(int argc, char **argv)
 			}
 		}
 
-		// pick item
+		// :pick item
 		{
 			for (int i = 0; i < MAX_ENTITY_COUNT; i++)
 			{
@@ -580,6 +602,7 @@ int entry(int argc, char **argv)
 						if (fabsf(v2_dist(en->pos, player_en->pos)) < player_pickup_radius)
 						{
 							world->inventory_items[en->arch].amount += 1;
+							world->inventory_items[en->arch].arch = en->arch;
 							entity_destroy(en);
 						}
 					}
@@ -594,7 +617,7 @@ int entry(int argc, char **argv)
 			draw_frame.view = m4_scalar(1.0);
 			draw_frame.projection = m4_make_orthographic_projection(0.0, width, 0.0, height, -1, 10);
 
-			float y_pos = 10.0;
+			float y_pos = 20.0;
 
 			int item_count = 0;
 			for (int i = 0; i < ARCH_MAX; i++)
@@ -615,10 +638,10 @@ int entry(int argc, char **argv)
 			float x_start_pos = (width / 2.0) - (entire_thing_width_idk / 2.0);
 
 			// inventory bg box rendering
+			Matrix4 inventoryXform = m4_scalar(1.0);
 			{
-				Matrix4 xform = m4_scalar(1.0);
-				xform = m4_translate(xform, v3(x_start_pos, y_pos, 0.0));
-				draw_rect_xform(xform, v2(entire_thing_width_idk, icon_thing), COLOR_BLACK_TRANSPARENT);
+				inventoryXform = m4_translate(inventoryXform, v3(x_start_pos, y_pos, 0.0));
+				draw_rect_xform(inventoryXform, v2(entire_thing_width_idk, icon_thing), COLOR_BLACK_TRANSPARENT);
 			}
 
 			int slot_index = 0;
@@ -685,15 +708,19 @@ int entry(int argc, char **argv)
 					{
 						float one_zero_on = 0.5 * sin_breathe(os_get_current_time_in_seconds(), 20.0);
 						xform = m4_translate(xform, v3(one_zero_on * 0.5, one_zero_on * 0.5, 0.0));
+						
+						string label = get_entity_archtype_item_descritions(item->arch);
+						Gfx_Text_Metrics mtxt = measure_text(font, label, FONT_HEIGHT, v2(1, 1));
 
-						// draw_text(font, STR("Right-click for thing"), FONT_HEIGHT, v2(xform.m[0][3], xform.m[1][3]), v2(1, 1), COLOR_WHITE);
-
-						draw_text(font, STR("I am text"), FONT_HEIGHT, v2(0, 0),  v2(1, 1), COLOR_WHITE);
+						float middle = (x_start_pos + (entire_thing_width_idk / 2.0));
+						float x_start = middle - ((mtxt.functional_size.x*0.10) / 2.0);
+						
+						draw_text(font, label, FONT_HEIGHT, v2(x_start, 10),  v2(.1, .1), COLOR_WHITE);
 					}
 					xform = m4_translate(xform, v3(get_sprite_size(sprite).x * -0.5, get_sprite_size(sprite).y * -0.5, 0.0));
 
 					draw_image_xform(sprite->image, xform, get_sprite_size(sprite), COLOR_WHITE);
-					slot_index += 1;					
+					slot_index += 1;
 				}
 			}
 		}
