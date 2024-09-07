@@ -701,7 +701,8 @@ int entry(int argc, char **argv)
 					}
 
 					draw_rect_xform(xform, v2(8, 8), color);
-
+					Matrix4 xformAmount = m4_translate(xform, v3(6, 1, 0.0));
+					draw_text_xform(font, tprint("%i", item->amount), FONT_HEIGHT, xformAmount,  v2(.04, .04), COLOR_WHITE);
 					xform = m4_translate(xform, v3(icon_width * 0.5, icon_width * 0.5, 0.0));
 
 					if (item->hover)
